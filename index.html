@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Path Advisor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .timer-animation {
+            transition: width 1s linear;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Career Path Advisor</h1>
+            <p class="text-gray-600">Discover your ideal career path through our AI-powered assessment</p>
+        </header>
+
+        <!-- Question Section -->
+        <div id="questionContainer" class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <!-- Timer -->
+            <div class="mb-4">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="timer" class="bg-blue-600 h-2.5 rounded-full timer-animation" style="width: 100%"></div>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Time remaining: <span id="timeLeft">60</span> seconds</p>
+            </div>
+
+            <!-- Progress -->
+            <div class="mb-6">
+                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Progress</span>
+                    <span id="progress">1/30</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 3.33%"></div>
+                </div>
+            </div>
+
+            <!-- Question -->
+            <div id="questionText" class="text-xl font-semibold mb-6">
+                How would you rate your academic performance in Mathematics?
+            </div>
+
+            <!-- Options -->
+            <div id="options" class="space-y-3">
+                <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition option">
+                    Excellent (Above 90%)
+                </button>
+                <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition option">
+                    Good (70-90%)
+                </button>
+                <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition option">
+                    Average (50-70%)
+                </button>
+                <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition option">
+                    Below Average (Below 50%)
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section (Initially Hidden) -->
+        <div id="resultsContainer" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Strength Analysis -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Your Strengths Analysis</h2>
+                    <canvas id="strengthsChart"></canvas>
+                </div>
+
+                <!-- Career Match -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Career Match Analysis</h2>
+                    <canvas id="careerMatchChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Career Recommendations -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4">Top Career Recommendations</h2>
+                <div class="space-y-4" id="careerRecommendations">
+                    <!-- Recommendations will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestion = 1;
+        const totalQuestions = 30;
+        let timer;
+        let scores = {
+            academic: 0,
+            interests: 0,
+            aptitude: 0,
+            personality: 0,
+            values: 0
+        };
+
+        const questions = [
+            {
+                text: "How would you rate your academic performance in Mathematics?",
+                category: "academic",
+                options: [
+                    "Excellent (Above 90%)",
+                    "Good (70-90%)",
+                    "Average (50-70%)",
+                    "Below Average (Below 50%)"
+                ]
+            },
+            // Add more questions here
+        ];
+
+        function startTimer() {
+            let timeLeft = 60;
+            const timerElement = document.getElementById('timer');
+            const timeLeftElement = document.getElementById('timeLeft');
+
+            timer = setInterval(() => {
+                timeLeft--;
+                timeLeftElement.textContent = timeLeft;
+                timerElement.style.width = `${(timeLeft/60) * 100}%`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    moveToNextQuestion();
+                }
+            }, 1000);
+        }
+
+        function moveToNextQuestion() {
+            clearInterval(timer);
+            currentQuestion++;
+
+            if (currentQuestion > totalQuestions) {
+                showResults();
+                return;
+            }
+
+            updateProgress();
+            startTimer();
+        }
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentQuestion}/${totalQuestions}`;
+            document.getElementById('progressBar').style.width = `${(currentQuestion/totalQuestions) * 100}%`;
+        }
+
+        function showResults() {
+            document.getElementById('questionContainer').classList.add('hidden');
+            document.getElementById('resultsContainer').classList.remove('hidden');
+            
+            // Initialize charts
+            createStrengthsChart();
+            createCareerMatchChart();
+            showCareerRecommendations();
+        }
+
+        function createStrengthsChart() {
+            const ctx = document.getElementById('strengthsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Academic', 'Interests', 'Aptitude', 'Personality', 'Values'],
+                    datasets: [{
+                        label: 'Your Profile',
+                        data: [85, 90, 75, 80, 95],
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    }]
+                }
+            });
+        }
+
+        function createCareerMatchChart() {
+            const ctx = document.getElementById('careerMatchChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Software Engineering', 'Data Science', 'UX Design', 'Product Management'],
+                    datasets: [{
+                        label: 'Match Percentage',
+                        data: [95, 88, 82, 75],
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function showCareerRecommendations() {
+            const recommendations = [
+                {
+                    title: "Software Engineering",
+                    match: "95% Match",
+                    description: "Based on your strong analytical skills and problem-solving abilities"
+                },
+                {
+                    title: "Data Science",
+                    match: "88% Match",
+                    description: "Your mathematical aptitude and interest in patterns suggests a good fit"
+                },
+                {
+                    title: "UX Design",
+                    match: "82% Match",
+                    description: "Your creativity combined with analytical thinking makes this a good option"
+                }
+            ];
+
+            const container = document.getElementById('careerRecommendations');
+            recommendations.forEach(rec => {
+                container.innerHTML += `
+                    <div class="border-l-4 border-blue-500 pl-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-semibold text-lg">${rec.title}</h3>
+                            <span class="text-green-600 font-medium">${rec.match}</span>
+                        </div>
+                        <p class="text-gray-600">${rec.description}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Initialize the quiz
+        document.querySelectorAll('.option').forEach(option => {
+            option.addEventListener('click', () => {
+                moveToNextQuestion();
+            });
+        });
+
+        startTimer();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
